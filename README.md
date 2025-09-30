@@ -73,196 +73,39 @@ Study Companion is a mobile application designed to enhance your study experienc
 - **AI/ML**: `openai`, `tesseract.js`
 - **File Handling**: `multer`, `fs`
 
-## 🏗️ Architecture & Implementation
-
-### AI Features Implementation
-
-#### Smart Subject Classification
-
-```javascript
-// Frontend: addNote.tsx
-const classifySubject = async () => {
-  const response = await fetch(`${API_URL}/classify-note`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, note }),
-  });
-  return response.json();
-};
-
-// Backend: OpenAI Chat Completions
-openai.chat.completions.create({
-  model: "gpt-3.5-turbo",
-  messages: [
-    /* classification prompt */
-  ],
-});
-```
-
-#### OCR Text Recognition
-
-```javascript
-// Frontend: Camera/Photo picker → Base64
-const response = await fetch(`${API_URL}/ocr`, {
-  method: "POST",
-  body: JSON.stringify({ imageBase64 }),
-});
-
-// Backend: Tesseract.js processing
-Tesseract.recognize(imageData, "eng").then((result) => {
-  res.json({ text: result.data.text });
-});
-```
-
-#### Voice Transcription
-
-```javascript
-// Frontend: Audio recording → FormData upload
-const formData = new FormData();
-formData.append("audio", { uri: audioUri, type: "audio/m4a" });
-
-// Backend: OpenAI Whisper
-openai.audio.transcriptions.create({
-  file: audioStream,
-  model: "whisper-1",
-});
-```
-
-### Data Architecture
-
-- **Firestore Collections**:
-  - `notes`: `{ title, note, subject, tags[], uid }`
-  - `users`: `{ totalSessions, totalWorkTime, totalBreakTime }`
-- **Real-time synchronization** using Firestore `onSnapshot`
-- **User-scoped data access** with Firebase security rules
-
-### Navigation Structure
-
-```
-app/
-├── _layout.tsx (Root Stack)
-├── (auth)/
-│   ├── login.tsx
-│   └── register.tsx
-├── (drawers)/
-│   ├── _layout.tsx (Drawer Navigation)
-│   ├── home.tsx (Dashboard)
-│   ├── notesHome.tsx (Notes List)
-│   └── pomodoro.tsx (Focus Timer)
-└── (notes)/
-    ├── addNote.tsx
-    └── updateNote.tsx
-```
-
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- **Node.js** (v16 or higher)
-- **npm** or **yarn**
-- **Expo CLI**: `npm install -g @expo/cli`
-- **iOS Simulator** (for iOS development) or **Android Studio** (for Android)
-- **Firebase project** with Authentication and Firestore enabled
-- **OpenAI API key** for AI features
+- Node.js (v16+), npm, Expo CLI
+- Firebase project with Auth & Firestore
+- OpenAI API key
 
-### Installation
+### Quick Setup
 
-1. **Clone the repository**
+1. **Clone & Install**
 
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/V-Shah07/Study-Companion.git
    cd Study_Companion
-   ```
-
-2. **Install frontend dependencies**
-
-   ```bash
    npm install
+   cd StudyCompanionBackend && npm install
    ```
 
-3. **Install backend dependencies**
+2. **Configure APIs**
+
+   - Firebase: Update `Study_Companion/Configs/firebaseConfig.ts`
+   - OpenAI: Create `StudyCompanionBackend/.env` with `OPENAI_API_KEY=your_key`
+
+3. **Run**
 
    ```bash
-   cd StudyCompanionBackend
-   npm install
+   # Terminal 1: Backend
+   cd StudyCompanionBackend && node index.js
+
+   # Terminal 2: Frontend
+   cd Study_Companion && npx expo start
    ```
-
-4. **Configure Firebase**
-
-   - Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
-   - Enable Authentication (Email/Password) and Firestore Database
-   - Copy your Firebase config to `Study_Companion/Configs/firebaseConfig.ts`
-   - Replace the placeholder values with your actual Firebase configuration
-
-5. **Configure OpenAI API**
-
-   - Get your API key from [platform.openai.com](https://platform.openai.com)
-   - Create a `.env` file in the `StudyCompanionBackend` directory:
-
-   ```bash
-   cd StudyCompanionBackend
-   cp env.example .env
-   ```
-
-   - Edit `.env` and add your OpenAI API key:
-
-   ```bash
-   OPENAI_API_KEY=your_openai_api_key_here
-   PORT=8080
-   ```
-
-6. **Start the backend server**
-
-   ```bash
-   cd StudyCompanionBackend
-   node index.js
-   ```
-
-   Server will run on `http://localhost:8080`
-
-7. **Start the Expo development server**
-
-   ```bash
-   cd Study_Companion
-   npx expo start
-   ```
-
-8. **Run on device/simulator**
-   - Scan QR code with Expo Go app (mobile)
-   - Press `i` for iOS simulator
-   - Press `a` for Android emulator
-
-### Environment Setup
-
-#### Firebase Configuration
-
-```typescript
-// Study_Companion/Configs/firebaseConfig.ts
-const firebaseConfig = {
-  apiKey: "your-api-key",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "your-sender-id",
-  appId: "your-app-id",
-  measurementId: "your-measurement-id",
-};
-```
-
-#### Backend Configuration
-
-```bash
-# StudyCompanionBackend/.env
-OPENAI_API_KEY=sk-your-openai-api-key
-PORT=8080
-NODE_ENV=development
-```
-
-### Development Notes
-
-- **Backend IP**: Update the hardcoded IP address (`192.168.68.117`) in frontend files to match your development machine's IP
-- **CORS**: Backend has permissive CORS for development; restrict for production
-- **Environment Variables**: All sensitive keys are now stored in environment variables (`.env` files) and are not committed to the repository
 
 ## 📱 Usage
 
@@ -274,33 +117,6 @@ NODE_ENV=development
 3. **Organize** notes using tags and subject filtering
 4. **Track focus** with Pomodoro timer
 5. **View analytics** on the dashboard
-
-## 🔒 Security Considerations
-
-- **Environment Variables**: All API keys are stored in `.env` files and excluded from version control
-- **Firebase Security**: Firebase security rules should restrict data access to authenticated users only
-- **CORS Configuration**: Backend CORS should be configured for specific domains in production
-- **Data Isolation**: User data is isolated by Firebase Authentication UID
-- **API Key Protection**: OpenAI API keys are never exposed in the codebase
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- OpenAI for GPT and Whisper APIs
-- Tesseract.js for OCR capabilities
-- Expo team for the excellent React Native framework
-- Firebase for backend services
 
 ---
 
