@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Transcription Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .test-section h2 {
+            color: #444;
+            margin-top: 0;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            min-height: 50px;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .record-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .time-display {
+            font-family: monospace;
+            font-size: 18px;
+            color: #666;
+        }
+        #audioPlayback {
+            width: 100%;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Audio Transcription Test</h1>
+        
+        <!-- Test 1: File Upload -->
+        <div class="test-section">
+            <h2>Test 1: Upload Audio File</h2>
+            <p>Select an audio file (.wav, .mp3, .m4a, etc.) to transcribe:</p>
+            <input type="file" id="audioFile" accept="audio/*">
+            <button onclick="testFileUpload()">Upload & Transcribe</button>
+            <div id="fileResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Test 2: Record Audio -->
+        <div class="test-section">
+            <h2>Test 2: Record Audio</h2>
+            <p>Record audio directly in your browser:</p>
+            <div class="record-controls">
+                <button id="recordBtn" onclick="startRecording()">🎤 Start Recording</button>
+                <button id="stopBtn" onclick="stopRecording()" disabled>⏹️ Stop Recording</button>
+                <span class="time-display" id="recordTime">00:00</span>
+            </div>
+            <audio id="audioPlayback" controls style="display: none;"></audio>
+            <button id="transcribeBtn" onclick="transcribeRecording()" disabled>📝 Transcribe Recording</button>
+            <div id="recordResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Server Status -->
+        <div class="test-section">
+            <h2>Server Status</h2>
+            <button onclick="checkServerStatus()">Check Server</button>
+            <div id="statusResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:8080';
+        let mediaRecorder;
+        let recordedChunks = [];
+        let recordingTimer;
+        let recordingStartTime;
+
+        // Test file upload
+        async function testFileUpload() {
+            const fileInput = document.getElementById('audioFile');
+            const resultDiv = document.getElementById('fileResult');
+            
+            if (!fileInput.files[0]) {
+                showResult(resultDiv, 'Please select an audio file first', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('audio', fileInput.files[0]);
+
+            showResult(resultDiv, 'Transcribing audio... This may take a moment.', 'loading');
+
+            try {
+                const response = await fetch(`${API_BASE}/transcribe`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showResult(resultDiv, `✅ Transcription successful!\n\nText: "${result.text}"\n\nLanguage: ${result.language || 'Unknown'}`, 'success');
+                } else {
+                    showResult(resultDiv, `❌ Transcription failed: ${result.error}\n\nDetails: ${result.details}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        // Recording functions
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                recordedChunks = [];
+                mediaRecorder = new MediaRecorder(stream);
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'audio/wav' });
+                    const audioUrl = URL.createObjectURL(blob);
+                    
+                    const audioElement = document.getElementById('audioPlayback');
+                    audioElement.src = audioUrl;
+                    audioElement.style.display = 'block';
+                    
+                    document.getElementById('transcribeBtn').disabled = false;
+                };
+                
+                mediaRecorder.start();
+                recordingStartTime = Date.now();
+                
+                document.getElementById('recordBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                
+                recordingTimer = setInterval(updateTimer, 100);
+                
+            } catch (error) {
+                const resultDiv = document.getElementById('recordResult');
+                showResult(resultDiv, `❌ Could not access microphone: ${error.message}`, 'error');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
+            
+            clearInterval(recordingTimer);
+            
+            document.getElementById('recordBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+
+        function updateTimer() {
+            const elapsed = Date.now() - recordingStartTime;
+            const seconds = Math.floor(elapsed / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const displayTime = `${minutes.toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+            document.getElementById('recordTime').textContent = displayTime;
+        }
+
+        async function transcribeRecording() {
+            const resultDiv = document.getElementById('recordResult');
+            
+            if (recordedChunks.length === 0) {
+                showResult(resultDiv, 'No recording available', 'error');
+                return;
+            }
+
+            const blob = new Blob(recordedChunks, { type: 'audio/wav' });
+            const formData = new FormData();
+            formData.append('audio', blob, 'recording.wav');
+
+            showResult(resultDiv, 'Transcribing recording... This may take a moment.', 'loading');
+
+            try {
+                const response = await fetch(`${API_BASE}/transcribe`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showResult(resultDiv, `✅ Transcription successful!\n\nText: "${result.text}"\n\nLanguage: ${result.language || 'Unknown'}`, 'success');
+                } else {
+                    showResult(resultDiv, `❌ Transcription failed: ${result.error}\n\nDetails: ${result.details}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        // Check server status
+        async function checkServerStatus() {
+            const resultDiv = document.getElementById('statusResult');
+            showResult(resultDiv, 'Checking server...', 'loading');
+
+            try {
+                const response = await fetch(`${API_BASE}/`);
+                const text = await response.text();
+                
+                if (response.ok) {
+                    showResult(resultDiv, `✅ Server is running!\n\nResponse: ${text}`, 'success');
+                } else {
+                    showResult(resultDiv, `❌ Server responded with error: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `❌ Cannot connect to server: ${error.message}\n\nMake sure your backend is running on port 8080`, 'error');
+            }
+        }
+
+        function showResult(element, message, type) {
+            element.textContent = message;
+            element.className = `result ${type}`;
+            element.style.display = 'block';
+        }
+
+        // Auto-check server status on load
+        window.addEventListener('load', checkServerStatus);
+    </script>
+</body>
+</html>
