@@ -117,7 +117,3 @@ Study Companion is a mobile application designed to enhance your study experienc
 3. **Organize** notes using tags and subject filtering
 4. **Track focus** with Pomodoro timer
 5. **View analytics** on the dashboard
-
----
-
-**Built with ❤️ for students everywhere**
